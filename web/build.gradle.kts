@@ -38,8 +38,11 @@ gdxTeaVM {
     js {
         mainClass.set("com.unciv.web.WebLauncher")
         htmlTitle.set("Unciv")
-        // Unciv's code base is big; give the TeaVM compiler room.
-        processMemory.set(4096)
+        // Unciv's code base is big; give the TeaVM compiler room (it runs in its own process).
+        outOfProcess.set(true)
+        processMemory.set(9216)
+        // Less precise but much lighter whole-program analysis
+        fastGlobalAnalysis.set(true)
     }
 }
 
