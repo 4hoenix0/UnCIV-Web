@@ -19,6 +19,8 @@ beforeSettings {
 settingsEvaluated {
     // Only the real Unciv build gets the :web module, not buildSrc
     if (settingsDir.name != "buildSrc") {
+        // Unciv's settings don't set a name, so Gradle would use the folder name (".upstream"), which it rejects
+        rootProject.name = "Unciv"
         include(":web")
         project(":web").projectDir = file(webDir)
     }
