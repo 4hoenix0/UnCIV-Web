@@ -4,13 +4,13 @@ plugins {
     id("com.github.xpenatan.gdx-teavm") version "1.6.1"
 }
 
-// core targets Java 8 bytecode; TeaVM is fine with that. The launcher itself needs 11+.
+// core targets Java 8 bytecode; TeaVM is fine with that. The launcher itself needs 17+.
 java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-    compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+    compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
 }
 
 dependencies {
