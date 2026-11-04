@@ -1,27 +1,46 @@
-// Gradle init script: bolts our `:web` module onto an UNMODIFIED Unciv checkout.
-// Used as: ./gradlew -I gradle/web-init.gradle.kts ...   (scripts/build.sh does this for you)
-// Because nothing in the upstream tree is edited by this, upstream updates can't conflict with it.
-//
-// NOTE: init scripts also run for Unciv's nested `buildSrc` build, so everything here must be harmless there.
+// The :web module. It is injected into the (patched) Unciv checkout by gradle/web-init.gradle.kts.
+plugins {
+    id("kotlin")
+    id("com.github.xpenatan.gdx-teavm") version "1.6.1"
+}
 
-val webDir = System.getenv("UNCIV_WEB_MODULE_DIR") ?: error("UNCIV_WEB_MODULE_DIR not set")
+// core targets Java 8 bytecode; TeaVM is fine with that. The launcher itself needs 11+.
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+}
 
-beforeSettings {
-    // gdx-teavm's Gradle plugin lives on Maven Central. Declaring any repository replaces Gradle's default
-    // plugin portal, so list the portal explicitly too (buildSrc needs it for kotlin-dsl).
-    pluginManagement.repositories {
-        gradlePluginPortal()
-        mavenCentral()
-        maven("https://central.sonatype.com/repository/maven-snapshots/")
+dependencies {
+    implementation(project(":core"))
+    implementation(rootProject.libs.gdx)
+}
+
+// Unciv keeps its game data in android/assets (jsons, atlases, sounds, fonts, translations...)
+val unciv = rootProject.file("android/assets")
+val webAssets = layout.buildDirectory.dir("webAssets")
+val stageAssets by tasks.registering(Sync::class) {
+    from(unciv) {
+        exclude("**/*.md", "**/.git*", "**/*.psd")
+    }
+    into(webAssets)
+}
+
+gdxTeaVM {
+    assets.from(webAssets)
+
+    // Unciv (de)serializes its whole data model through libGDX Json, which uses reflection.
+    // gdx-teavm 1.6.1 generates reflection metadata for these patterns (`**` = whole package tree).
+    reflection("com.unciv.**")
+
+    js {
+        mainClass.set("com.unciv.web.WebLauncher")
+        htmlTitle.set("Unciv")
+        // Unciv's code base is big; give the TeaVM compiler room.
+        processMemory.set(4096)
     }
 }
 
-settingsEvaluated {
-    // Only the real Unciv build gets the :web module, not buildSrc
-    if (settingsDir.name != "buildSrc") {
-        // Unciv's settings don't set a name, so Gradle would use the folder name (".upstream"), which it rejects
-        rootProject.name = "Unciv"
-        include(":web")
-        project(":web").projectDir = file(webDir)
-    }
-}
+tasks.matching { it.name.startsWith("gdx_teavm_") }.configureEach { dependsOn(stageAssets) }
