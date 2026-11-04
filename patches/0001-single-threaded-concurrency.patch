@@ -1,0 +1,91 @@
+diff --git a/core/src/com/unciv/UncivGame.kt b/core/src/com/unciv/UncivGame.kt
+index de2494b..e49d71f 100644
+--- a/core/src/com/unciv/UncivGame.kt
++++ b/core/src/com/unciv/UncivGame.kt
+@@ -37,7 +37,6 @@ import com.unciv.utils.*
+ import kotlinx.coroutines.CancellationException
+ import yairm210.purity.annotations.Readonly
+ import java.io.PrintWriter
+-import java.lang.management.ManagementFactory
+ import java.util.*
+ import kotlin.collections.ArrayDeque
+ import kotlin.collections.asSequence
+@@ -497,7 +496,7 @@ private fun logRunningThreads() {
+         pushScreen(onScreenCreated) { MainMenuScreen() }
+     }
+ 
+-    override fun getGcCount(): Int = ManagementFactory.getGarbageCollectorMXBeans().sumOf { it.collectionCount }.toInt()
++    override fun getGcCount(): Int = 0 // unciv-web: no java.lang.management in the browser
+ 
+     companion object {
+         //region AUTOMATICALLY GENERATED VERSION DATA - DO NOT CHANGE THIS REGION, INCLUDING THIS COMMENT
+diff --git a/core/src/com/unciv/utils/Concurrency.kt b/core/src/com/unciv/utils/Concurrency.kt
+index d0b265b..8f0af36 100644
+--- a/core/src/com/unciv/utils/Concurrency.kt
++++ b/core/src/com/unciv/utils/Concurrency.kt
+@@ -11,15 +11,11 @@ import kotlinx.coroutines.CoroutineName
+ import kotlinx.coroutines.CoroutineScope
+ import kotlinx.coroutines.Job
+ import kotlinx.coroutines.Runnable
+-import kotlinx.coroutines.asCoroutineDispatcher
+ import kotlinx.coroutines.cancel
+ import kotlinx.coroutines.launch
+ import kotlinx.coroutines.withContext
+ import yairm210.purity.annotations.Readonly
+ import java.util.concurrent.CancellationException
+-import java.util.concurrent.ExecutorService
+-import java.util.concurrent.Executors
+-import java.util.concurrent.ThreadFactory
+ import kotlin.coroutines.CoroutineContext
+ 
+ /**
+@@ -164,39 +160,24 @@ object Dispatcher {
+  */
+ @Suppress("PrivatePropertyName", "PropertyName") // Inherited all-caps names from former dev
+ private class Dispatchers {
+-    private val EXECUTORS = mutableListOf<ExecutorService>()
++    // unciv-web: the browser has exactly one thread and TeaVM has no java.util.concurrent.Executors,
++    // so there are no thread pools. "Background" work runs inline on the caller, GL work is posted to the render loop.
+ 
+-    /** Runs coroutines on a daemon thread pool. */
+-    val DAEMON: CoroutineDispatcher = createThreadpoolDispatcher("threadpool-daemon-", isDaemon = true)
++    /** Runs coroutines immediately on the calling thread. */
++    val DAEMON: CoroutineDispatcher = CrashHandlingDispatcher(InlineDispatcher())
+ 
+-    /** Runs coroutines on a non-daemon thread pool. */
+-    val NON_DAEMON: CoroutineDispatcher = createThreadpoolDispatcher("threadpool-nondaemon-", isDaemon = false)
++    /** Same as [DAEMON] - there is only one thread. */
++    val NON_DAEMON: CoroutineDispatcher = DAEMON
+ 
+     /** Runs coroutines on the GDX GL thread - unused in e.g. ConsoleLauncher */
+     val GL: CoroutineDispatcher by lazy { CrashHandlingDispatcher(GLDispatcher(DAEMON)) }
+ 
+-    fun stopThreadPools() {
+-        val iterator = EXECUTORS.iterator()
+-        while (iterator.hasNext()) {
+-            val executor = iterator.next()
+-            executor.shutdown()
+-            iterator.remove()
+-        }
+-    }
++    fun stopThreadPools() {}
+ 
+-    @Readonly fun isStopped() = EXECUTORS.isEmpty()
++    @Readonly fun isStopped() = false
+ 
+-    private fun createThreadpoolDispatcher(threadPrefix: String, isDaemon: Boolean): CrashHandlingDispatcher {
+-        val executor = Executors.newCachedThreadPool(object : ThreadFactory {
+-            var n = 0
+-            override fun newThread(r: Runnable): Thread {
+-                val thread = Thread(r, "${threadPrefix}${n++}")
+-                thread.isDaemon = isDaemon
+-                return thread
+-            }
+-        })
+-        EXECUTORS.add(executor)
+-        return CrashHandlingDispatcher(executor.asCoroutineDispatcher())
++    private class InlineDispatcher : CoroutineDispatcher() {
++        override fun dispatch(context: CoroutineContext, block: Runnable) = block.run()
+     }
+ 
+     private class CrashHandlingDispatcher(

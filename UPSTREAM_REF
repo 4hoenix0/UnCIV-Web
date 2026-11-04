@@ -1,0 +1,6 @@
+# Which commit/tag of yairm210/Unciv this repo builds. Edited by scripts/update.sh
+# (and by the "Sync upstream" workflow) - normally you never touch it by hand.
+UPSTREAM_REPO=https://github.com/yairm210/Unciv.git
+# Track "release" (latest GitHub release tag, recommended) or "master" (every upstream commit)
+UPSTREAM_TRACK=release
+UPSTREAM_REF=608d9de26b16f834d5fed19df4fd1bd65bfcbf3e

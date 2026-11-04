@@ -1,0 +1,43 @@
+name: Sync upstream Unciv
+
+# Checks daily whether yairm210/Unciv has a new release (or new master commit, see UPSTREAM_TRACK in
+# UPSTREAM_REF). If so it opens a PR bumping the pinned version. The PR runs the normal build; merge it to deploy.
+# If one of our patches no longer applies, it opens an issue instead.
+on:
+  schedule: [{ cron: "17 5 * * *" }]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: update
+        run: |
+          set +e
+          out=$(bash scripts/update.sh 2>&1); code=$?
+          echo "$out"
+          { echo "log<<EOF"; echo "$out"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "changed=$(echo "$out" | tail -1)" >> "$GITHUB_OUTPUT"
+          # new version in UPSTREAM_REF for the PR title
+          echo "ref=$(grep ^UPSTREAM_REF= UPSTREAM_REF | cut -d= -f2 | cut -c1-10)" >> "$GITHUB_OUTPUT"
+      - name: Open PR with the new upstream version
+        if: steps.update.outputs.code == '0' && steps.update.outputs.changed == 'changed'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: upstream-sync
+          commit-message: "Update Unciv upstream to ${{ steps.update.outputs.ref }}"
+          title: "Update Unciv upstream to ${{ steps.update.outputs.ref }}"
+          body: "Automated bump of `UPSTREAM_REF`. The build check on this PR shows whether the web port still compiles. Merge to deploy."
+      - name: Open issue if patches no longer apply
+        if: steps.update.outputs.code == '2'
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          gh issue create --title "Upstream Unciv changed: patches need rebasing" \
+            --body "$(printf 'scripts/update.sh could not apply our patches to the new upstream version:\n\n```\n%s\n```\nRebase the failing patch(es) in `patches/` (see README, "When a patch fails").' "${{ steps.update.outputs.log }}")"
