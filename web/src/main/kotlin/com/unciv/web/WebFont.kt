@@ -37,9 +37,9 @@ class WebFont : FontImplementation {
         canvas.height = height
         ctx.font = "${size}px \"$family\", sans-serif"  // resizing a canvas resets its state
         ctx.clearRect(0.0, 0.0, width.toDouble(), height.toDouble())
-        ctx.fillStyle = "white"
+                ctx.setFillStyle("white")
         ctx.textBaseline = "alphabetic"
-        ctx.fillText(symbolString, 0.0, metrics.leading + metrics.ascent)
+                ctx.fillText(symbolString, 0.0, (metrics.leading + metrics.ascent).toDouble())
 
         val rgba = ctx.getImageData(0.0, 0.0, width.toDouble(), height.toDouble()).data
         val argb = IntArray(width * height) { i ->
