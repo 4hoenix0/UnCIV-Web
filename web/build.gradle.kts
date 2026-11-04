@@ -38,8 +38,9 @@ gdxTeaVM {
     js {
         mainClass.set("com.unciv.web.WebLauncher")
         htmlTitle.set("Unciv")
-        // Unciv's code base is big; give the TeaVM compiler room (it runs in its own process).
-        outOfProcess.set(true)
+        // Unciv's code base is big. Run the compiler inside the Gradle JVM, whose heap scripts/build.sh sets to 12 GB
+        // (a separate 9 GB compiler process also ran out of memory - this tells us which JVM was the problem).
+        outOfProcess.set(false)
         processMemory.set(9216)
         // Less precise but much lighter whole-program analysis
         fastGlobalAnalysis.set(true)
