@@ -31,20 +31,16 @@ val stageAssets by tasks.registering(Sync::class) {
 gdxTeaVM {
     assets.from(webAssets)
 
-    webDefaults {
-        mainClass = "com.unciv.web.WebLauncher"
-        htmlTitle = "Unciv"
-        // Unciv's translation + ruleset JSON is huge; give the TeaVM compiler room.
-        processMemory = 4096
-        // Unciv loads many model classes through libGDX Json (reflection). Anything not listed here
-        // may be dropped by TeaVM's dead-code elimination - add classes here when JSON loading fails at runtime.
-        preservedClasses.addAll(
-            "com.unciv.models.ruleset.Ruleset",
-            "com.unciv.models.metadata.GameSettings",
-            "com.unciv.logic.GameInfo"
-        )
+    // Unciv (de)serializes its whole data model through libGDX Json, which uses reflection.
+    // gdx-teavm 1.6.1 generates reflection metadata for these patterns (`**` = whole package tree).
+    reflection("com.unciv.**")
+
+    js {
+        mainClass.set("com.unciv.web.WebLauncher")
+        htmlTitle.set("Unciv")
+        // Unciv's code base is big; give the TeaVM compiler room.
+        processMemory.set(4096)
     }
-    js {}
 }
 
 tasks.matching { it.name.startsWith("gdx_teavm_") }.configureEach { dependsOn(stageAssets) }
