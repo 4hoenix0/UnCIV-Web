@@ -31,33 +31,13 @@ val stageAssets by tasks.registering(Sync::class) {
 gdxTeaVM {
     assets.from(webAssets)
 
-    // Only data-model packages: gdx-teavm makes EVERY member of every matching class reflectively reachable,
-    // so "com.unciv.**" (whole game incl. UI) ran TeaVM's analysis out of memory even at 12 GB.
-    reflection(
-        "com.unciv.models.**",
-        "com.unciv.json.**",
-        "com.unciv.logic.civilization.**",
-        "com.unciv.logic.city.**",
-        "com.unciv.logic.map.**",
-        "com.unciv.logic.trade.**",
-        "com.unciv.logic.battle.**",
-        "com.unciv.logic.automation.civilization.**",
-        "com.unciv.logic.GameInfo**",
-        "com.unciv.logic.Versioning**",
-        "com.unciv.ui.components.MapArrowType**",
-        "com.unciv.ui.components.fonts.FontFamilyData**"
-    )
-    // Prints which classes were selected, so the next log shows what the patterns matched
-    reflectionDebug.set(true)
+    // EXPERIMENT: no Unciv classes reflectable at all (libGDX's own defaults stay on). Json loading of rulesets/saves
+    // will NOT work at runtime, but this shows whether the TeaVM analysis can finish without the reflection fan-out.
 
     js {
         mainClass.set("com.unciv.web.WebLauncher")
         htmlTitle.set("Unciv")
-        // Unciv's code base is big. Run the compiler inside the Gradle JVM, whose heap scripts/build.sh sets to 12 GB
-        // (a separate 9 GB compiler process also ran out of memory - this tells us which JVM was the problem).
         outOfProcess.set(false)
-        processMemory.set(9216)
-        // Less precise but much lighter whole-program analysis
         fastGlobalAnalysis.set(true)
     }
 }
