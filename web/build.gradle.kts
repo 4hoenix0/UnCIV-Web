@@ -31,9 +31,24 @@ val stageAssets by tasks.registering(Sync::class) {
 gdxTeaVM {
     assets.from(webAssets)
 
-    // Unciv (de)serializes its whole data model through libGDX Json, which uses reflection.
-    // gdx-teavm 1.6.1 generates reflection metadata for these patterns (`**` = whole package tree).
-    reflection("com.unciv.**")
+    // Only data-model packages: gdx-teavm makes EVERY member of every matching class reflectively reachable,
+    // so "com.unciv.**" (whole game incl. UI) ran TeaVM's analysis out of memory even at 12 GB.
+    reflection(
+        "com.unciv.models.**",
+        "com.unciv.json.**",
+        "com.unciv.logic.civilization.**",
+        "com.unciv.logic.city.**",
+        "com.unciv.logic.map.**",
+        "com.unciv.logic.trade.**",
+        "com.unciv.logic.battle.**",
+        "com.unciv.logic.automation.civilization.**",
+        "com.unciv.logic.GameInfo**",
+        "com.unciv.logic.Versioning**",
+        "com.unciv.ui.components.MapArrowType**",
+        "com.unciv.ui.components.fonts.FontFamilyData**"
+    )
+    // Prints which classes were selected, so the next log shows what the patterns matched
+    reflectionDebug.set(true)
 
     js {
         mainClass.set("com.unciv.web.WebLauncher")
